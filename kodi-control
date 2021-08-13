@@ -307,7 +307,15 @@ character_map = {
 
 # schema {{{2
 # schema for settings file
-schema = Schema(dict(hostname=str, port=to_int, username=str, password=str))
+schema = Schema(
+    dict(
+        hostname = str,
+        port = to_int,
+        username = str,
+        password = str
+        display = str
+    )
+)
 
 # actions {{{2
 actions = [
@@ -406,6 +414,8 @@ url = f"http://{hostname}:{port}/jsonrpc"
 auth = (username, password) if username else None
 log(f"Kodi: {hostname}:{port}")
 headers = {'Content-Type': 'application/json'}
+if 'display' in settings:
+    os.environ['DISPLAY'] = settings['display']
 
 
 # main() {{{1

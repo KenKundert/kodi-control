@@ -56,7 +56,12 @@ course that machine must be accessible over the network from the machine running
 *Kodi Control*.  In this case, some functionality, such as volume control, is 
 not available.  Alternately, *Kodi* can be run locally or you can open an SSH 
 terminal and run *Kodi Control* on the *Kodi* host.  In this case all 
-functionality is available.
+functionality is available.  To control a remote *Kodi* while using an SSH 
+terminal, you must specify the name of your display in your ``settings.nt`` 
+file.  The typical value is ``:0`` or ``:0``, but you can examine your DISPLAY 
+environment variable and specify whatever it contains::
+
+    display: :0
 
 However you choose to do it, you would start *Kodi Control* in a terminal::
 
