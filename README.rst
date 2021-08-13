@@ -85,7 +85,7 @@ As it starts, it immediately prints a list of available commands.  Then you
 simply type individual characters to run the available commands.
 
 You can specify the path to the *Kodi* executable and the name used by the 
-*Kodi* binary in your settings file:
+*Kodi* binary in your settings file::
 
     kodi: kodi-standalone
     kodi binary: kodi.bin_v8
