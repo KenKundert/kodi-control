@@ -312,8 +312,8 @@ schema = Schema(
         hostname = str,
         port = to_int,
         username = str,
-        password = str
-        display = str
+        password = str,
+        display = str,
     )
 )
 
