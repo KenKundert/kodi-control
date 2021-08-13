@@ -249,8 +249,8 @@ class Keys:
 
 
 # Globals {{{1
-__version__ = '0.0.0'
-__released__ = '2021-08-12'
+__version__ = '0.1.0'
+__released__ = '2021-08-13'
 
 # scale factor {{{2
 class Scale:
