@@ -389,17 +389,12 @@ inform = Inform(logfile=log_dir / 'log', flush=True)
 
 # read settings {{{2
 config_dir = to_path(user_config_dir('kodi-control'))
-hostname = 'localhost'
-port = 8080
+settings = {}
 try:
     settings_filepath = config_dir / 'settings.nt'
     keymap = {}
     settings = nt.load(settings_filepath, top=dict, keymap=keymap)
     settings = schema(settings)
-    hostname = settings.get('hostname', hostname)
-    port = settings.get('port', port)
-    username = settings.get('username', '')
-    password = settings.get('password', '')
 except nt.NestedTextError as e:
     e.terminate()
 except Invalid as e:
@@ -411,6 +406,10 @@ except FileNotFoundError as e:
     log(os_error(e))
 except OSError as e:
     fatal(os_error(e))
+hostname = settings.get('hostname', 'localhost')
+port = settings.get('port', 8080)
+username = settings.get('username', 'kodi')
+password = settings.get('password', '')
 url = f"http://{hostname}:{port}/jsonrpc"
 auth = (username, password) if username else None
 log(f"Kodi: {hostname}:{port}")
