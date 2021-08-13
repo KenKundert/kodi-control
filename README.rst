@@ -46,7 +46,7 @@ is empty by default).
 Before using *Kodi Control* you must first enable the JSONRPC over HTTP 
 interface.  To do so, open *Kodi* and navigate to 
 *Settings*→*Services*→*Control* and enable "Allow remote control via HTTP".  
-While there you can add a username and password if desired.
+While there you can add a username and password if desired.  Do not enable SSL.
 
 You can run *Kodi Control* on a different from the one that runs *Kodi*, you 
 just need to give the hostname for the machine that is running *Kodi*, and of 
@@ -60,21 +60,19 @@ However you choose to do it, you would start *Kodi Control* in a terminal::
 
     > kodi-control
     Enter desired actions, use 'q' to terminate.
-         : toggle play/pause       >: forward 90 seconds      f: forward 30 seconds
-        ': literal pass through    H: go to to home screen    h: move left
-        ,: backward 10 seconds     K: kill player             i: show info
-        .: forward 10 seconds      M: temporary mute          j: move down
-        0: go to 0%                P: toggle player on top    k: move up
-        1: go to 10%               S: start player            l: move right
-        2: go to 20%               T: show subtitles          m: toggle mute
-        3: go to 30%               [: go to start             n: toggle navigation
-        4: go to 40%               ]: go to end               p: toggle play/pause
-        5: go to 50%               b: backward 30 seconds     t: hide subtitles
-        6: go to 60%               bs: go back                u: volume up
-        7: go to 70%               c: context menu            x: stop
-        8: go to 80%               d: volume down
-        9: go to 90%               ent: select
-        <: backward 90 seconds     esc: go to to home screen
+         : toggle play/pause       ENT: select                h: move left
+        ': literal text            ESC: go to to home screen  i: show info
+        0: go to 0%                H: go to to home screen    j: move down
+        1: go to 10%               K: kill player             k: move up
+        2: go to 20%               M: temporary mute          l: move right
+        3: go to 30%               P: toggle player on top    m: toggle mute
+        4: go to 40%               S: start player            n: toggle navigation
+        5: go to 50%               T: show subtitles          p: toggle play/pause
+        6: go to 60%               b: skip backward           s: go to start
+        7: go to 70%               c: context menu            t: hide subtitles
+        8: go to 80%               d: volume down             u: volume up
+        9: go to 90%               e: go to end               x: stop
+        BS: go back                f: skip forward
 
 As it starts, it immediately prints a list of available commands.  Then you 
 simply type individual characters to run the available commands.

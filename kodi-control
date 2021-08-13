@@ -17,12 +17,12 @@ Specify hostname and port number in ~/.config/kodi-control/settings.nt
 from docopt import docopt
 from inform import (
     Inform, Error, codicil, columns, cull, display, done, error, fatal,
-    full_stop, indent, is_str, log, os_error, warn
+    full_stop, indent, is_str, is_mapping, log, os_error, warn
 )
 from shlib import Run, Start, set_prefs as shlib_set_prefs, mkdir, to_path
 from time import sleep
 from appdirs import user_config_dir, user_data_dir
-import json, os, requests, sys, tty, termios, json
+import copy, json, os, requests, sys, tty, termios, json, threading
 import nestedtext as nt
 from voluptuous import Schema, Invalid, Required
 
@@ -39,45 +39,51 @@ class Action:
 # KodiAction {{{2
 class KodiAction(Action):
 
-    def __init__(self, keys, desc, method=None, **kwargs):
+    def __init__(self, keys, desc, method=None, initial_value=None, **kwargs):
         super().__init__(keys, desc)
         self.method = method
+        self.initial_value = initial_value
         self.kwargs = kwargs
 
     def send_to_kodi(self, method = None, **kwargs):
-            if method is None:
-                method = self.method
-                extra_args = self.kwargs.copy()
-            else:
-                extra_args = {}
-            extra_args.update(kwargs)
-            log('sending to kodi:', method)
-            params = dict(jsonrpc="2.0", id=1, method=method, params=extra_args)
-            log(indent(nt.dumps(params)))
-            request = json.dumps(params).encode('utf-8')
-            try:
-                r = requests.post(
-                    url, headers=headers, auth=auth, data=request, timeout=1
-                )
-                r.raise_for_status()
-                response = r.json()
-            except (
-                ConnectionError, TimeoutError, requests.RequestException
-            ) as e:
-                raise Error(e)
-            except json.JSONDecodeError as e:
-                raise Error(e)
-                #response = {}
-            self.check_response(response)
-            return response
+        if method is None:
+            method = self.method
+            extra_args = copy.deepcopy(self.kwargs)
+        else:
+            extra_args = {}
+        extra_args.update(kwargs)
+
+        if self.initial_value and method != 'Player.GetActivePlayers':
+            scale_factor.scale_computed(self.initial_value, extra_args)
+
+        log('sending to kodi:', method)
+        params = dict(jsonrpc="2.0", id=1, method=method, params=extra_args)
+        log(indent(nt.dumps(params)))
+        request = json.dumps(params).encode('utf-8')
+        try:
+            r = requests.post(
+                url, headers=headers, auth=auth, data=request, timeout=5
+            )
+            r.raise_for_status()
+            response = r.json()
+        except (
+            ConnectionError, TimeoutError, requests.RequestException
+        ) as e:
+            log(e)
+            raise Error('no connection to Kodi.')
+        except json.JSONDecodeError as e:
+            raise Error(e)
+            #response = {}
+        self.check_response(response)
+        return response
 
     def check_response(self, response):
-            log('response from kodi:')
-            log(indent(nt.dumps(response)))
-            if 'error' in response:
-                raise Error(
-                    full_stop(response['error'].get('message', 'unknown'))
-                )
+        log('response from kodi:')
+        log(indent(nt.dumps(response)))
+        if 'error' in response:
+            raise Error(
+                full_stop(response['error'].get('message', 'unknown'))
+            )
 
     def get_active_player(self):
         response = self.send_to_kodi(method='Player.GetActivePlayers')
@@ -113,14 +119,11 @@ class KodiPlayer(KodiAction):
 class Literals(KodiAction):
 
     def run(self):
-        while True:
-            key = getch()
-            if key in ['intr', 'eof', 'esc']:  # cancel
-                return
-            self.send_to_kodi('Input.SendText', text=key)
-            if key == 'ent':  # accept and close
-                self.send_to_kodi('Input.SendText', done=True)
-                return
+        try:
+            text = input('Enter text (enter terminates, ctrl-c cancels): ')
+            self.send_to_kodi('Input.SendText', text=text, done=True)
+        except (EOFError, KeyboardInterrupt):
+            display()
 
 
 # ToggleMute {{{2
@@ -246,6 +249,48 @@ class Keys:
 
 
 # Globals {{{1
+# scale factor {{{2
+class Scale:
+    growth_factor = 1.5
+    max_growth = 20
+
+    def __init__(self):
+        self.prev_action = None
+        self.reset()
+
+    def reset(self):
+        self.scale = 1
+        self.timer = None
+
+    def update(self, action):
+        # clear a previous timer
+        if self.timer:
+            self.timer.cancel()
+
+        if action == self.prev_action:
+            # grow the scale factor on repeated presses of the same key
+            self.scale *= self.growth_factor
+            if self.scale > self.max_growth:
+                self.scale = self.max_growth
+
+            # schedule a reset event
+            self.timer = threading.Timer(2, self.reset)
+            self.timer.start()
+        else:
+            # otherwise reset the scale factor
+            self.reset()
+        self.prev_action = action
+
+    def scale_computed(self, initial_value, values):
+        def replace_computed(values):
+            for key in values:
+                value = values[key]
+                if value == '<computed>':
+                    values[key] = int(initial_value*self.scale)
+                elif is_mapping(value):
+                    replace_computed(value)
+        replace_computed(values)
+
 # character_map {{{2
 # converts ord(char) where char is a character read from
 # stdin to a convenient name used internally
@@ -267,23 +312,25 @@ actions = [
     KodiInput('j', 'move down', 'Input.Down'),
     KodiInput('k', 'move up', 'Input.Up'),
     KodiInput('l', 'move right', 'Input.Right'),
-    KodiInput('ent', 'select', 'Input.Select'),
-    KodiInput('bs', 'go back', 'Input.Back'),
-    KodiInput('esc H', 'go to to home screen', 'Input.Home'),
+    KodiInput('ENT', 'select', 'Input.Select'),
+    KodiInput('BS', 'go back', 'Input.Back'),
+    KodiInput('ESC H', 'go to to home screen', 'Input.Home'),
     KodiInput('n', 'toggle navigation', 'Input.ShowOSD'),
 
     KodiPlayer([' ', 'p'], 'toggle play/pause', 'Player.PlayPause'),
-    KodiPlayer(',', 'backward 10 seconds', 'Player.Seek', value=dict(seconds=-10)),
-    KodiPlayer('b', 'backward 30 seconds', 'Player.Seek', value=dict(seconds=-30)),
-    KodiPlayer('<', 'backward 90 seconds', 'Player.Seek', value=dict(seconds=-90)),
-    KodiPlayer('.', 'forward 10 seconds', 'Player.Seek', value=dict(seconds=10)),
-    KodiPlayer('f', 'forward 30 seconds', 'Player.Seek', value=dict(seconds=30)),
-    KodiPlayer('>', 'forward 90 seconds', 'Player.Seek', value=dict(seconds=90)),
-    #KodiPlayer('b ,', 'backward 10 seconds', 'Player.Seek', value=dict(step='smallbackward')),
-    #KodiPlayer('<', 'backward 30 seconds', 'Player.Seek', value=dict(step='bigbackward')),
-    #KodiPlayer('f .', 'forward 10 seconds', 'Player.Seek', value=dict(step='smallforward')),
-    #KodiPlayer('>', 'forward 30 seconds', 'Player.Seek', value=dict(step='bigforward')),
-    KodiPlayer('[', 'go to start', 'Player.Seek', value=dict(percentage=0)),
+    # KodiPlayer(',', 'backward 10 seconds', 'Player.Seek', value=dict(seconds=-10)),
+    KodiPlayer('b', 'skip backward', 'Player.Seek', initial_value=-10, value=dict(seconds='<computed>')),
+    # KodiPlayer('<', 'backward 90 seconds', 'Player.Seek', value=dict(seconds=-90)),
+    # KodiPlayer('[', 'backward 10 minutes', 'Player.Seek', value=dict(seconds=-600)),
+    # KodiPlayer('.', 'forward 10 seconds', 'Player.Seek', value=dict(seconds=10)),
+    KodiPlayer('f', 'skip forward', 'Player.Seek', initial_value=10, value=dict(seconds='<computed>')),
+    # KodiPlayer('>', 'forward 90 seconds', 'Player.Seek', value=dict(seconds=90)),
+    # KodiPlayer(']', 'forward 10 minutes', 'Player.Seek', value=dict(seconds=600)),
+    # KodiPlayer('b ,', 'backward 10 seconds', 'Player.Seek', value=dict(step='smallbackward')),
+    # KodiPlayer('<', 'backward 30 seconds', 'Player.Seek', value=dict(step='bigbackward')),
+    # KodiPlayer('f .', 'forward 10 seconds', 'Player.Seek', value=dict(step='smallforward')),
+    # KodiPlayer('>', 'forward 30 seconds', 'Player.Seek', value=dict(step='bigforward')),
+    KodiPlayer('s', 'go to start', 'Player.Seek', value=dict(percentage=0)),
     KodiPlayer('0', 'go to 0%', 'Player.Seek', value=dict(percentage=0)),
     KodiPlayer('1', 'go to 10%', 'Player.Seek', value=dict(percentage=10)),
     KodiPlayer('2', 'go to 20%', 'Player.Seek', value=dict(percentage=20)),
@@ -294,14 +341,14 @@ actions = [
     KodiPlayer('7', 'go to 70%', 'Player.Seek', value=dict(percentage=70)),
     KodiPlayer('8', 'go to 80%', 'Player.Seek', value=dict(percentage=80)),
     KodiPlayer('9', 'go to 90%', 'Player.Seek', value=dict(percentage=90)),
-    KodiPlayer(']', 'go to end', 'Player.Seek', value=dict(percentage=100)),
+    KodiPlayer('e', 'go to end', 'Player.Seek', value=dict(percentage=100)),
     KodiPlayer('x', 'stop', 'Player.Stop'),
 
     ToggleMute('m', 'toggle mute'),
     TemporaryMute('M', 'temporary mute'),
     Volume('u', 'volume up', '+'),
     Volume('d', 'volume down', '-'),
-    Literals("'", 'literal pass through'),
+    Literals("'", 'literal text'),
 
     KodiInput('P', 'toggle player on top', 'GUI.SetFullscreen', fullscreen='toggle'),
     KodiInput('c', 'context menu', 'Input.ContextMenu'),
@@ -358,13 +405,15 @@ log(f"Kodi: {hostname}:{port}")
 headers = {'Content-Type': 'application/json'}
 
 
-# main() {{{2
+# main() {{{1
 display("Enter desired actions, use 'q' to terminate.")
 display(columns(desc, 90))
 
+scale_factor = Scale()
 try:
     while True:
         action = getch()
+        scale_factor.update(action)
         if action in ['intr', 'eof', 'q']:
             break
         try:
