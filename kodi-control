@@ -287,7 +287,7 @@ class Scale:
             for key in values:
                 value = values[key]
                 if value == '<computed>':
-                    values[key] = int(initial_value*self.scale)
+                    values[key] = round(initial_value*self.scale)
                 elif is_mapping(value):
                     replace_computed(value)
         replace_computed(values)
