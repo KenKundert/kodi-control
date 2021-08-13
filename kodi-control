@@ -393,7 +393,8 @@ hostname = 'localhost'
 port = 8080
 try:
     settings_filepath = config_dir / 'settings.nt'
-    settings = nt.load(settings_filepath, top=dict, keymap=(keymap:={}))
+    keymap = {}
+    settings = nt.load(settings_filepath, top=dict, keymap=keymap)
     settings = schema(settings)
     hostname = settings.get('hostname', hostname)
     port = settings.get('port', port)
