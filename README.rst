@@ -81,8 +81,8 @@ However you choose to do it, you would start *Kodi Control* in a terminal::
         9: go to 90%               e: go to end               x: stop
         BS: go back                f: skip forward
 
-As it starts, it immediately prints a list of available commands.  Then you 
-simply type individual characters to run the available commands.
+As it starts, it immediately prints a list of available actions.  Then you 
+simply type individual characters to run the desired action.
 
 You can specify the path to the *Kodi* executable and the name used by the 
 *Kodi* binary in your settings file::
