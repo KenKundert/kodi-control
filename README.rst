@@ -4,10 +4,11 @@ Kodi Control — Interactive TTY-based remote control for Kodi
 .. image:: https://pepy.tech/badge/kodi-control/month
     :target: https://pepy.tech/project/kodi-control
 
-..  image:: https://github.com/KenKundert/kodi-control/actions/workflows/build.yaml/badge.svg
-    :target: https://github.com/KenKundert/kodi-control/actions/workflows/build.yaml
-
 .. ignore:
+
+    ..  image:: https://github.com/KenKundert/kodi-control/actions/workflows/build.yaml/badge.svg
+        :target: https://github.com/KenKundert/kodi-control/actions/workflows/build.yaml
+
     .. image:: https://coveralls.io/repos/github/KenKundert/kodi-control/badge.svg?branch=master
         :target: https://coveralls.io/github/KenKundert/kodi-control?branch=master
 
