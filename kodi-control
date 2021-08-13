@@ -394,8 +394,8 @@ try:
     settings_filepath = config_dir / 'settings.nt'
     keymap = {}
     settings = nt.load(settings_filepath, top=dict, keymap=keymap)
-    settings = schema(settings)
     settings = {'_'.join(k.split()): v for k, v in settings.items()}
+    settings = schema(settings)
 except nt.NestedTextError as e:
     e.terminate()
 except Invalid as e:
