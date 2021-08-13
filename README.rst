@@ -46,9 +46,9 @@ All the values are optional with the defaults shown (except for password which
 is empty by default).
 
 Before using *Kodi Control* you must first enable the JSONRPC over HTTP 
-interface.  To do so, open *Kodi* and navigate to 
-*Settings*→*Services*→*Control* and enable "Allow remote control via HTTP".  
-While there you can add a username and password if desired.  Do not enable SSL.
+interface.  To do so, open *Kodi* and navigate to *Settings* → *Services* 
+→ *Control* and enable "Allow remote control via HTTP".  While there you can add 
+a username and password if desired.  Do not enable SSL.
 
 You can run *Kodi Control* on a different from the one that runs *Kodi*, you 
 just need to give the hostname for the machine that is running *Kodi*, and of 
