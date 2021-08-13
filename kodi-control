@@ -1,0 +1,377 @@
+#!/usr/bin/env python3
+#
+#  Kodi Control
+
+# Description {{{1
+"""Control Kodi
+
+Usage:
+    kodi-control
+
+Use simple keystokes to control Kodi.
+Enable 'remote control from applications'
+Specify hostname and port number in ~/.config/kodi-control/settings.nt
+"""
+
+# Imports {{{1
+from docopt import docopt
+from inform import (
+    Inform, Error, codicil, columns, cull, display, done, error, fatal,
+    full_stop, indent, is_str, log, os_error, warn
+)
+from shlib import Run, Start, set_prefs as shlib_set_prefs, mkdir, to_path
+from time import sleep
+from appdirs import user_config_dir, user_data_dir
+import json, os, requests, sys, tty, termios, json
+import nestedtext as nt
+from voluptuous import Schema, Invalid, Required
+
+
+# Action classes {{{1
+# Action {{{2
+class Action:
+    def __init__(self, keys, desc):
+        self.keys = keys.split() if is_str(keys) else keys
+        Keys(self.keys)
+        self.desc = desc
+
+
+# KodiAction {{{2
+class KodiAction(Action):
+
+    def __init__(self, keys, desc, method=None, **kwargs):
+        super().__init__(keys, desc)
+        self.method = method
+        self.kwargs = kwargs
+
+    def send_to_kodi(self, method = None, **kwargs):
+            if method is None:
+                method = self.method
+                extra_args = self.kwargs.copy()
+            else:
+                extra_args = {}
+            extra_args.update(kwargs)
+            log('sending to kodi:', method)
+            params = dict(jsonrpc="2.0", id=1, method=method, params=extra_args)
+            log(indent(nt.dumps(params)))
+            request = json.dumps(params).encode('utf-8')
+            try:
+                r = requests.post(
+                    url, headers=headers, auth=auth, data=request, timeout=1
+                )
+                r.raise_for_status()
+                response = r.json()
+            except (
+                ConnectionError, TimeoutError, requests.RequestException
+            ) as e:
+                raise Error(e)
+            except json.JSONDecodeError as e:
+                raise Error(e)
+                #response = {}
+            self.check_response(response)
+            return response
+
+    def check_response(self, response):
+            log('response from kodi:')
+            log(indent(nt.dumps(response)))
+            if 'error' in response:
+                raise Error(
+                    full_stop(response['error'].get('message', 'unknown'))
+                )
+
+    def get_active_player(self):
+        response = self.send_to_kodi(method='Player.GetActivePlayers')
+        self.check_response(response)
+        players = response.get('result', [])
+        player_ids = cull([p.get('playerid') for p in players], remove=None)
+        num_players = len(player_ids)
+        if num_players == 0:
+            warn('no player is active.')
+            return None
+        if num_players > 1:
+            warn('multiple players are active, using first.')
+        return player_ids[0]
+
+
+# KodiInput {{{2
+class KodiInput(KodiAction):
+
+    def run(self):
+        self.send_to_kodi()
+
+
+# KodiPlayer {{{2
+class KodiPlayer(KodiAction):
+
+    def run(self):
+        player_id = self.get_active_player()
+        if player_id is not None:
+            self.send_to_kodi(playerid=player_id)
+
+
+# Literals {{{2
+class Literals(KodiAction):
+
+    def run(self):
+        while True:
+            key = getch()
+            if key in ['intr', 'eof', 'esc']:  # cancel
+                return
+            self.send_to_kodi('Input.SendText', text=key)
+            if key == 'ent':  # accept and close
+                self.send_to_kodi('Input.SendText', done=True)
+                return
+
+
+# ToggleMute {{{2
+class ToggleMute(Action):
+
+    def run(self):
+        mute()
+
+# TemporaryMute {{{2
+class TemporaryMute(Action):
+
+    def __init__(self, keys=None, desc=None, duration=60):
+        super().__init__(keys, desc)
+        self.duration = duration
+
+    def run(self):
+        def show(text=''):
+            sys.stdout.write('\033[2K\r' + str(text))
+            sys.stdout.flush()
+
+        mute('1')
+        try:
+            print('ctrl-c to cancel.')
+            for i in range(self.duration, 0, -1):
+                show(i)
+                sleep(1)
+        except KeyboardInterrupt:
+            show()
+        mute('0')
+
+# Volume {{{2
+class Volume(Action):
+    def __init__(self, keys, desc, direction, percent=5):
+        super().__init__(keys, desc)
+        assert direction in ['+', '-']
+        self.direction = direction
+        self.percent = percent
+
+    def run(self):
+        for sink in get_audio_sinks():
+            Run(f'pactl set-sink-mute {sink} 0', modes='soeW')
+            Run(f'pactl set-sink-volume {sink} {self.direction}{self.percent}%', modes='soeW')
+
+# StartPlayer {{{2
+class StartPlayer(Action):
+    def __init__(self, keys, desc, command):
+        super().__init__(keys, desc)
+        self.command = command
+
+    def run(self):
+        Start(self.command, modes='sOEW')
+
+# KillPlayer {{{2
+class KillPlayer(Action):
+    def __init__(self, keys, desc, command):
+        super().__init__(keys, desc)
+        self.command = command
+
+    def run(self):
+        Run(f'killall {self.command}', modes='soeW')
+
+
+# Utility Functions {{{1
+# get_audio_sinks() {{{2
+def get_audio_sinks():
+    pactl = Run('pactl list sinks', modes='sOeW1')
+    return [
+        l.partition('#')[-1]
+        for l in pactl.stdout.splitlines()
+        if l.startswith('Sink #')
+    ]
+
+# mute() {{{2
+def mute(action=None):
+    if not action:
+        action = 'toggle'
+    assert action in ['0', '1', 'toggle']
+    log(f'muting each available sink:')
+    for sink in get_audio_sinks():
+        Run(f'pactl set-sink-mute {sink} {action}', modes='sOMW')
+
+# getch() {{{2
+def getch():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    log(f'user entered: "{ch}" ({ord(ch)}).')
+    return character_map.get(ord(ch), ch)
+
+# run() {{{2
+def run(action):
+    try:
+        log(f'calling: {action.__class__.__name__}.')
+        action.run()
+    except OSError as e:
+        error(os_error(e))
+    except Error as e:
+        e.report()
+        if e.cmd:
+            codicil('command:', e.cmd)
+        if e.stdout:
+            codicil(e.stdout)
+
+# to_int() {{{2
+def to_int(arg):
+    try:
+        return int(arg)
+    except ValueError:
+        raise Invalid('expected integer.')
+
+
+class Keys:
+    known_keys = set()
+    def __init__(self, keys):
+        for key in keys:
+            if key in self.known_keys:
+                error('duplicate key.', culprit=key)
+            self.known_keys.add(key)
+
+
+# Globals {{{1
+# character_map {{{2
+# converts ord(char) where char is a character read from
+# stdin to a convenient name used internally
+character_map = {
+    3: 'intr',  # interupt, ctrl-c
+    4: 'eof',   # end-of-file, ctrl-d
+    8: 'bs',    # backspace, ctrl-h
+    13: 'ent',  # enter, ctrl-n
+    27: 'esc',  # excape, ctrl-[
+}
+
+# schema {{{2
+# schema for settings file
+schema = Schema(dict(hostname=str, port=to_int, username=str, password=str))
+
+# actions {{{2
+actions = [
+    KodiInput('h', 'move left', 'Input.Left'),
+    KodiInput('j', 'move down', 'Input.Down'),
+    KodiInput('k', 'move up', 'Input.Up'),
+    KodiInput('l', 'move right', 'Input.Right'),
+    KodiInput('ent', 'select', 'Input.Select'),
+    KodiInput('bs', 'go back', 'Input.Back'),
+    KodiInput('esc H', 'go to to home screen', 'Input.Home'),
+    KodiInput('n', 'toggle navigation', 'Input.ShowOSD'),
+
+    KodiPlayer([' ', 'p'], 'toggle play/pause', 'Player.PlayPause'),
+    KodiPlayer(',', 'backward 10 seconds', 'Player.Seek', value=dict(seconds=-10)),
+    KodiPlayer('b', 'backward 30 seconds', 'Player.Seek', value=dict(seconds=-30)),
+    KodiPlayer('<', 'backward 90 seconds', 'Player.Seek', value=dict(seconds=-90)),
+    KodiPlayer('.', 'forward 10 seconds', 'Player.Seek', value=dict(seconds=10)),
+    KodiPlayer('f', 'forward 30 seconds', 'Player.Seek', value=dict(seconds=30)),
+    KodiPlayer('>', 'forward 90 seconds', 'Player.Seek', value=dict(seconds=90)),
+    #KodiPlayer('b ,', 'backward 10 seconds', 'Player.Seek', value=dict(step='smallbackward')),
+    #KodiPlayer('<', 'backward 30 seconds', 'Player.Seek', value=dict(step='bigbackward')),
+    #KodiPlayer('f .', 'forward 10 seconds', 'Player.Seek', value=dict(step='smallforward')),
+    #KodiPlayer('>', 'forward 30 seconds', 'Player.Seek', value=dict(step='bigforward')),
+    KodiPlayer('[', 'go to start', 'Player.Seek', value=dict(percentage=0)),
+    KodiPlayer('0', 'go to 0%', 'Player.Seek', value=dict(percentage=0)),
+    KodiPlayer('1', 'go to 10%', 'Player.Seek', value=dict(percentage=10)),
+    KodiPlayer('2', 'go to 20%', 'Player.Seek', value=dict(percentage=20)),
+    KodiPlayer('3', 'go to 30%', 'Player.Seek', value=dict(percentage=30)),
+    KodiPlayer('4', 'go to 40%', 'Player.Seek', value=dict(percentage=40)),
+    KodiPlayer('5', 'go to 50%', 'Player.Seek', value=dict(percentage=50)),
+    KodiPlayer('6', 'go to 60%', 'Player.Seek', value=dict(percentage=60)),
+    KodiPlayer('7', 'go to 70%', 'Player.Seek', value=dict(percentage=70)),
+    KodiPlayer('8', 'go to 80%', 'Player.Seek', value=dict(percentage=80)),
+    KodiPlayer('9', 'go to 90%', 'Player.Seek', value=dict(percentage=90)),
+    KodiPlayer(']', 'go to end', 'Player.Seek', value=dict(percentage=100)),
+    KodiPlayer('x', 'stop', 'Player.Stop'),
+
+    ToggleMute('m', 'toggle mute'),
+    TemporaryMute('M', 'temporary mute'),
+    Volume('u', 'volume up', '+'),
+    Volume('d', 'volume down', '-'),
+    Literals("'", 'literal pass through'),
+
+    KodiInput('P', 'toggle player on top', 'GUI.SetFullscreen', fullscreen='toggle'),
+    KodiInput('c', 'context menu', 'Input.ContextMenu'),
+    KodiInput('i', 'show info', 'Input.Info'),
+    KodiPlayer('t', 'hide subtitles', 'Player.SetSubtitle', subtitle='off'),
+    KodiPlayer('T', 'show subtitles', 'Player.SetSubtitle', subtitle='on'),
+
+    StartPlayer('S', 'start player', 'kodi'),
+    KillPlayer('K', 'kill player', '-9 kodi.bin'),
+]
+
+
+# preliminaries {{{1
+# read command line {{{2
+available = {k:a for a in actions for k in a.keys}
+desc = ['{}: {}'.format(k, available[k].desc) for k in sorted(available)]
+cmdline = docopt(__doc__.format(actions=columns(desc)))
+
+# set up logging to ~/.local/share/kodi-control/log {{{2
+shlib_set_prefs(use_inform=True, log_cmd=True)
+try:
+    log_dir = to_path(user_data_dir('kodi-control'))
+    log_dir.mkdir(parents=True, exist_ok=True)
+except OSError as e:
+    error(os_error(e))
+inform = Inform(logfile=log_dir / 'log', flush=True)
+
+# read settings {{{2
+config_dir = to_path(user_config_dir('kodi-control'))
+hostname = 'localhost'
+port = 8080
+try:
+    settings_filepath = config_dir / 'settings.nt'
+    settings = nt.load(settings_filepath, top=dict, keymap=(keymap:={}))
+    settings = schema(settings)
+    hostname = settings.get('hostname', hostname)
+    port = settings.get('port', port)
+    username = settings.get('username', '')
+    password = settings.get('password', '')
+except nt.NestedTextError as e:
+    e.terminate()
+except Invalid as e:
+    kind = 'key' if 'key' in e.msg else 'value'
+    loc = keymap[tuple(e.path)]
+    culprit = [settings_filepath] + e.path
+    fatal(full_stop(e.msg), culprit=culprit, codicil=loc.as_line(kind))
+except FileNotFoundError as e:
+    log(os_error(e))
+except OSError as e:
+    fatal(os_error(e))
+url = f"http://{hostname}:{port}/jsonrpc"
+auth = (username, password) if username else None
+log(f"Kodi: {hostname}:{port}")
+headers = {'Content-Type': 'application/json'}
+
+
+# main() {{{2
+display("Enter desired actions, use 'q' to terminate.")
+display(columns(desc, 90))
+
+try:
+    while True:
+        action = getch()
+        if action in ['intr', 'eof', 'q']:
+            break
+        try:
+            run(available[action])
+        except KeyError:
+            error('unknown action.', culprit=action)
+    done()
+except OSError as e:
+    error(os_error(e))
+

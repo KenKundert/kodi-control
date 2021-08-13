@@ -1,0 +1,4 @@
+#!/bin/bash
+# Installs kodi-control
+
+pip3 install --user --upgrade .
