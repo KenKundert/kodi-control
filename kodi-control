@@ -312,6 +312,8 @@ schema = Schema(
         username = str,
         password = str,
         display = str,
+        kodi = str,
+        kodi_binary = str,
     )
 )
 
@@ -393,6 +395,7 @@ try:
     keymap = {}
     settings = nt.load(settings_filepath, top=dict, keymap=keymap)
     settings = schema(settings)
+    settings = {'_'.join(k.split()): v for k, v in settings.items()}
 except nt.NestedTextError as e:
     e.terminate()
 except Invalid as e:
@@ -413,7 +416,7 @@ auth = (username, password) if username else None
 log(f"Kodi: {hostname}:{port}")
 headers = {'Content-Type': 'application/json'}
 kodi_exe = settings.get('kodi', 'kodi')
-kodi_bin = settings.get('kodi binary', 'kodi.bin')
+kodi_bin = settings.get('kodi_binary', 'kodi.bin')
 if settings.get('display'):
     os.environ['DISPLAY'] = settings['display']
 
