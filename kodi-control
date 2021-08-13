@@ -298,11 +298,11 @@ class Scale:
 # converts ord(char) where char is a character read from
 # stdin to a convenient name used internally
 character_map = {
-    3: 'intr',  # interupt, ctrl-c
-    4: 'eof',   # end-of-file, ctrl-d
-    8: 'bs',    # backspace, ctrl-h
-    13: 'ent',  # enter, ctrl-n
-    27: 'esc',  # excape, ctrl-[
+    3: 'INTR',  # interupt, ctrl-c
+    4: 'EOF',   # end-of-file, ctrl-d
+    8: 'BS',    # backspace, ctrl-h
+    13: 'ENT',  # enter, ctrl-n
+    27: 'ESC',  # excape, ctrl-[
 }
 
 # schema {{{2
@@ -427,7 +427,7 @@ try:
     while True:
         action = getch()
         scale_factor.update(action)
-        if action in ['intr', 'eof', 'q']:
+        if action in ['INTR', 'EOF', 'q']:
             break
         try:
             run(available[action])
