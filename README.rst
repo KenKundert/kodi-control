@@ -32,7 +32,7 @@ Install using::
     pip3 install --user kodi-control
 
 Then, you need to create a file containing the settings.  In 
-~/.config/kodi-control/settings.nt (a `NestedText <https://nestedtext.org>` 
+~/.config/kodi-control/settings.nt (a `NestedText <https://nestedtext.org>`_ 
 file) that takes the following form::
 
     hostname: localhost
