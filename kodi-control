@@ -169,21 +169,19 @@ class Volume(Action):
 
 # StartPlayer {{{2
 class StartPlayer(Action):
-    def __init__(self, keys, desc, command):
+    def __init__(self, keys, desc):
         super().__init__(keys, desc)
-        self.command = command
 
     def run(self):
-        Start(self.command, modes='sOEW')
+        Start(kodi_exe, modes='sOEW')
 
 # KillPlayer {{{2
 class KillPlayer(Action):
-    def __init__(self, keys, desc, command):
+    def __init__(self, keys, desc):
         super().__init__(keys, desc)
-        self.command = command
 
     def run(self):
-        Run(f'killall {self.command}', modes='soeW')
+        Run(f'killall {kodi_bin}', modes='soeW')
 
 
 # Utility Functions {{{1
@@ -367,12 +365,12 @@ actions = [
     KodiPlayer('t', 'hide subtitles', 'Player.SetSubtitle', subtitle='off'),
     KodiPlayer('T', 'show subtitles', 'Player.SetSubtitle', subtitle='on'),
 
-    StartPlayer('S', 'start player', 'kodi'),
-    KillPlayer('K', 'kill player', '-9 kodi.bin'),
+    StartPlayer('S', 'start player'),
+    KillPlayer('K', 'kill player'),
 ]
 
 
-# preliminaries {{{1
+# Main {{{1
 # read command line {{{2
 available = {k:a for a in actions for k in a.keys}
 desc = ['{}: {}'.format(k, available[k].desc) for k in sorted(available)]
@@ -414,11 +412,13 @@ url = f"http://{hostname}:{port}/jsonrpc"
 auth = (username, password) if username else None
 log(f"Kodi: {hostname}:{port}")
 headers = {'Content-Type': 'application/json'}
-if 'display' in settings:
+kodi_exe = settings.get('kodi', 'kodi')
+kodi_bin = settings.get('kodi binary', 'kodi.bin')
+if settings.get('display'):
     os.environ['DISPLAY'] = settings['display']
 
 
-# main() {{{1
+# main loop {{{2
 display("Enter desired actions, use 'q' to terminate.")
 display(columns(desc, 90))
 

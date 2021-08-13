@@ -83,3 +83,22 @@ However you choose to do it, you would start *Kodi Control* in a terminal::
 
 As it starts, it immediately prints a list of available commands.  Then you 
 simply type individual characters to run the available commands.
+
+You can specify the path to the *Kodi* executable and the name used by the 
+*Kodi* binary in your settings file:
+
+    kodi: kodi-standalone
+    kodi binary: kodi.bin_v8
+
+``kodi`` holds the command used to start *Kodi*.  It can be just the command 
+name, in which case it must be on your path, or it can be the full path to the 
+command.  By default it is simply *kodi*.  ``kodi binary`` is used when killing 
+*Kodi*, by default it is *kodi.bin*.  Change this setting if the ``K`` command 
+does not work.  With *Kodi* running, you can run the *ps* command and look for 
+*kodi* to find the name of the running command. Generally you find two, one is 
+usually *kodi* and the other is generally *kodi.bin*, *kodi.bin_v8*, or 
+*kodi.x11*.  You want to use the second.
+
+If you have any trouble, you can look in the log file, 
+``~/.local/share/kodi-control/log`` for clues.  Feel free to post them to 
+`GitHub Issues <https://github.com/KenKundert/kodi-control/issues>`_.
