@@ -29,7 +29,7 @@ Getting Started
 
 Install using::
 
-    pip3 install --user kodi-control  (not yet available)
+    pip3 install --user kodi-control
 
 Then, you need to create a file containing the settings.  In 
 ~/.config/kodi-control/settings.nt (a `NestedText <https://nestedtext.org>` 
