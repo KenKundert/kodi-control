@@ -199,9 +199,8 @@ class ToggleMute(Action):
 # TemporaryMute {{{2
 class TemporaryMute(Action):
 
-    def __init__(self, keys=None, desc=None, duration=60):
+    def __init__(self, keys=None, desc=None):
         super().__init__(keys, desc)
-        self.duration = duration
 
     def run(self):
         def show(text=''):
@@ -211,11 +210,12 @@ class TemporaryMute(Action):
         mute('1')
         try:
             display('ctrl-c to cancel.')
-            for i in range(self.duration, 0, -1):
+            for i in range(temporary_mute_duration, 0, -1):
                 show(i)
                 sleep(1)
         except KeyboardInterrupt:
-            show()
+            pass
+        show()
         mute('0')
 
 # Volume {{{2
@@ -368,6 +368,7 @@ schema = Schema(
         username = str,
         password = str,
         display = str,
+        temporary_mute_duration = to_int,
         kodi = str,
         kodi_binary = str,
         kodi_version = str,
@@ -455,6 +456,7 @@ hostname = settings.get('hostname', 'localhost')
 port = settings.get('port', 8080)
 username = settings.get('username', 'kodi')
 password = settings.get('password', '')
+temporary_mute_duration = settings.get('temporary_mute_duration', 60)
 url = f"http://{hostname}:{port}/jsonrpc"
 auth = (username, password) if username else None
 headers = {'Content-Type': 'application/json'}

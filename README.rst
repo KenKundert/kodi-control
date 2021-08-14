@@ -53,13 +53,13 @@ a username and password if desired.  Do not enable SSL.
 You can run *Kodi Control* on a different from the one that runs *Kodi*, you 
 just need to give the hostname for the machine that is running *Kodi*, and of 
 course that machine must be accessible over the network from the machine running 
-*Kodi Control*.  In this case, some functionality, such as volume control, is 
-not available.  Alternately, *Kodi* can be run locally or you can open an SSH 
-terminal and run *Kodi Control* on the *Kodi* host.  In this case all 
-functionality is available.  To control a remote *Kodi* while using an SSH 
-terminal, you must specify the name of your display in your ``settings.nt`` 
-file.  The typical value is ``:0`` or ``:0``, but you can examine your DISPLAY 
-environment variable and specify whatever it contains::
+*Kodi Control*.  In this case, some functionality, such as volume control and 
+starting and killing *Kodi*, is not available.  Alternately, *Kodi* can be run 
+locally or you can open an SSH terminal and run *Kodi Control* on the *Kodi* 
+host.  In this case all functionality is available.  To control a remote *Kodi* 
+while using an SSH terminal, you must specify the name of your display in your 
+``settings.nt`` file.  The typical value is ``:0`` or ``:0``, but you can 
+examine your DISPLAY environment variable and specify whatever it contains::
 
     display: :0
 
@@ -83,6 +83,15 @@ However you choose to do it, you would start *Kodi Control* in a terminal::
 
 As it starts, it immediately prints a list of available actions.  Then you 
 simply type individual characters to run the desired action.
+
+The temporary mute action (``M``) engages mute for settable number of seconds.  
+This can be used to turn off the sound during commercials.  Once engaged you 
+will see a count down with the sound being re-enabled when the count reaches 0.  
+During the interim all input is ignore except ``ctrl-C` which immediately 
+terminates the count-down and immediately re-activates the sound.  You can 
+specify the duration of the temporary mute with the following setting::
+
+    temporary mute duration: 30
 
 You can specify the path to the *Kodi* executable and the name used by the 
 *Kodi* binary in your settings file::
@@ -108,7 +117,7 @@ if you specify the version number of *Kodi* in the settings file::
 Currently, the workaround is disabled if the version is 19 or later.
 
 If you have any trouble, you can enable the log file and examine it for clues.  
-To enable the log file add the following to your settings file::
+To enable the log file, add the following to your settings file::
 
     log: yes
 
