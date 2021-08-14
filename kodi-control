@@ -39,10 +39,9 @@ class Action:
 # KodiAction {{{2
 class KodiAction(Action):
 
-    def __init__(self, keys, desc, method=None, initial_value=None, **kwargs):
+    def __init__(self, keys, desc, method=None, **kwargs):
         super().__init__(keys, desc)
         self.method = method
-        self.initial_value = initial_value
         self.kwargs = kwargs
 
     def send_to_kodi(self, method = None, **kwargs):
@@ -52,9 +51,6 @@ class KodiAction(Action):
         else:
             extra_args = {}
         extra_args.update(kwargs)
-
-        if self.initial_value and method != 'Player.GetActivePlayers':
-            scale_factor.scale_computed(self.initial_value, extra_args)
 
         log('sending to kodi:', method)
         params = dict(jsonrpc="2.0", id=1, method=method, params=extra_args)
@@ -87,7 +83,6 @@ class KodiAction(Action):
 
     def get_active_player(self):
         response = self.send_to_kodi(method='Player.GetActivePlayers')
-        self.check_response(response)
         players = response.get('result', [])
         player_ids = cull([p.get('playerid') for p in players], remove=None)
         num_players = len(player_ids)
@@ -113,6 +108,75 @@ class KodiPlayer(KodiAction):
         player_id = self.get_active_player()
         if player_id is not None:
             self.send_to_kodi(playerid=player_id)
+
+
+# KodiSeek {{{2
+class KodiSeek(KodiAction):
+    # Kodi 17 & 18 are broken for forward seeks of less than 60 seconds.
+    # Rather than a relative seek, these do an absolute seek.
+    # So seek 60 moves forward one minute, but seek 30 moves to 30s into show.
+    #
+    # example seeks:
+    #   dict(step='smallforward'),   # move forward next 30 seconds
+    #   dict(step='bigforward'),     # move forward 10 minutes
+    #   dict(seconds=+120),          # move forward 120 seconds
+    #   dict(step='smallbackward'),  # move backward 30 seconds
+    #   dict(step='bigbackward'),    # move backward 10 minutes
+    #   dict(seconds=-120),          # move backward 120 seconds
+
+    FORWARD_SEEKS = None  # set in run() to work around Kodi bug
+    BACKWARD_SEEKS = [
+        dict(seconds=-10),
+        dict(seconds=-15),
+        dict(seconds=-30),
+        dict(seconds=-60),
+        dict(seconds=-120),
+        dict(seconds=-240),
+        dict(seconds=-480),
+        dict(seconds=-960),
+    ]
+
+    def __init__(self, keys, desc, direction=None):
+        super().__init__(keys, desc)
+        self.method = 'Player.Seek'
+        self.direction = direction  # needed by KodiSeek
+        self.kwargs = {}
+
+
+    @classmethod
+    def initialize(cls):
+        if kodi_version < (19,0):
+            small_seeks = [
+                dict(step='smallforward'),   # +30 seconds
+                dict(step='smallforward'),   # +30 seconds
+            ]
+        else:
+            small_seeks = [
+                dict(seconds=+10),
+                dict(seconds=+15),
+                dict(seconds=+30),
+            ]
+        large_seeks = [
+            dict(seconds=+60),
+            dict(seconds=+120),
+            dict(seconds=+240),
+            dict(seconds=+480),
+            dict(seconds=+960),
+        ]
+        cls.FORWARD_SEEKS = small_seeks + large_seeks
+
+    def run(self):
+        if self.FORWARD_SEEKS is None:
+            self.initialize()
+
+        if self.direction == 'forward':
+            seeks = self.FORWARD_SEEKS
+        else:
+            seeks = self.BACKWARD_SEEKS
+
+        player_id = self.get_active_player()
+        if player_id is not None:
+            self.send_to_kodi(playerid=player_id, value=repeat.get_seek(seeks))
 
 
 # Literals {{{2
@@ -146,7 +210,7 @@ class TemporaryMute(Action):
 
         mute('1')
         try:
-            print('ctrl-c to cancel.')
+            display('ctrl-c to cancel.')
             for i in range(self.duration, 0, -1):
                 show(i)
                 sleep(1)
@@ -250,47 +314,39 @@ class Keys:
 __version__ = '0.1.0'
 __released__ = '2021-08-13'
 
-# scale factor {{{2
-class Scale:
-    growth_factor = 1.5
-    max_growth = 20
 
+# scale factor {{{2
+class Repeat:
     def __init__(self):
-        self.prev_action = None
         self.reset()
 
     def reset(self):
-        self.scale = 1
+        self.prev_action = None
+        self.repeats = 0
         self.timer = None
 
     def update(self, action):
-        # clear a previous timer
-        if self.timer:
-            self.timer.cancel()
-
         if action == self.prev_action:
-            # grow the scale factor on repeated presses of the same key
-            self.scale *= self.growth_factor
-            if self.scale > self.max_growth:
-                self.scale = self.max_growth
-
-            # schedule a reset event
-            self.timer = threading.Timer(2, self.reset)
-            self.timer.start()
+            # this is a repeat, count it
+            self.repeats += 1
         else:
-            # otherwise reset the scale factor
+            # otherwise reset the count
             self.reset()
         self.prev_action = action
 
-    def scale_computed(self, initial_value, values):
-        def replace_computed(values):
-            for key in values:
-                value = values[key]
-                if value == '<computed>':
-                    values[key] = round(initial_value*self.scale)
-                elif is_mapping(value):
-                    replace_computed(value)
-        replace_computed(values)
+    def get_seek(self, seeks):
+        # clear a previous scheduled reset
+        if self.timer:
+            self.timer.cancel()
+
+        # schedule a new reset
+        self.timer = threading.Timer(2, self.reset)
+        self.timer.start()
+
+        # get and return the appropriate seek
+        repeats = min(self.repeats, len(seeks)-1)
+        return seeks[repeats]
+
 
 # character_map {{{2
 # converts ord(char) where char is a character read from
@@ -314,6 +370,8 @@ schema = Schema(
         display = str,
         kodi = str,
         kodi_binary = str,
+        kodi_version = str,
+        log = str,
     )
 )
 
@@ -329,18 +387,9 @@ actions = [
     KodiInput('n', 'toggle navigation', 'Input.ShowOSD'),
 
     KodiPlayer([' ', 'p'], 'toggle play/pause', 'Player.PlayPause'),
-    # KodiPlayer(',', 'backward 10 seconds', 'Player.Seek', value=dict(seconds=-10)),
-    KodiPlayer('b', 'skip backward', 'Player.Seek', initial_value=-10, value=dict(seconds='<computed>')),
-    # KodiPlayer('<', 'backward 90 seconds', 'Player.Seek', value=dict(seconds=-90)),
-    # KodiPlayer('[', 'backward 10 minutes', 'Player.Seek', value=dict(seconds=-600)),
-    # KodiPlayer('.', 'forward 10 seconds', 'Player.Seek', value=dict(seconds=10)),
-    KodiPlayer('f', 'skip forward', 'Player.Seek', initial_value=10, value=dict(seconds='<computed>')),
-    # KodiPlayer('>', 'forward 90 seconds', 'Player.Seek', value=dict(seconds=90)),
-    # KodiPlayer(']', 'forward 10 minutes', 'Player.Seek', value=dict(seconds=600)),
-    # KodiPlayer('b ,', 'backward 10 seconds', 'Player.Seek', value=dict(step='smallbackward')),
-    # KodiPlayer('<', 'backward 30 seconds', 'Player.Seek', value=dict(step='bigbackward')),
-    # KodiPlayer('f .', 'forward 10 seconds', 'Player.Seek', value=dict(step='smallforward')),
-    # KodiPlayer('>', 'forward 30 seconds', 'Player.Seek', value=dict(step='bigforward')),
+    KodiSeek('b', 'skip backward', direction='backward'),
+    KodiSeek('f', 'skip forward', direction='forward'),
+
     KodiPlayer('s', 'go to start', 'Player.Seek', value=dict(percentage=0)),
     KodiPlayer('0', 'go to 0%', 'Player.Seek', value=dict(percentage=0)),
     KodiPlayer('1', 'go to 10%', 'Player.Seek', value=dict(percentage=10)),
@@ -380,12 +429,7 @@ cmdline = docopt(__doc__.format(actions=columns(desc)))
 
 # set up logging to ~/.local/share/kodi-control/log {{{2
 shlib_set_prefs(use_inform=True, log_cmd=True)
-try:
-    log_dir = to_path(user_data_dir('kodi-control'))
-    log_dir.mkdir(parents=True, exist_ok=True)
-except OSError as e:
-    error(os_error(e))
-inform = Inform(logfile=log_dir / 'log', flush=True)
+inform = Inform()
 
 # read settings {{{2
 config_dir = to_path(user_config_dir('kodi-control'))
@@ -394,7 +438,7 @@ try:
     settings_filepath = config_dir / 'settings.nt'
     keymap = {}
     settings = nt.load(settings_filepath, top=dict, keymap=keymap)
-    settings = {'_'.join(k.split()): v for k, v in settings.items()}
+    settings = {'_'.join(k.lower().split()): v for k, v in settings.items()}
     settings = schema(settings)
 except nt.NestedTextError as e:
     e.terminate()
@@ -413,28 +457,38 @@ username = settings.get('username', 'kodi')
 password = settings.get('password', '')
 url = f"http://{hostname}:{port}/jsonrpc"
 auth = (username, password) if username else None
-log(f"Kodi: {hostname}:{port}")
 headers = {'Content-Type': 'application/json'}
 kodi_exe = settings.get('kodi', 'kodi')
 kodi_bin = settings.get('kodi_binary', 'kodi.bin')
+kodi_version = settings.get('kodi_version', '0.0')
+kodi_version = tuple(int(n) for n in kodi_version.split('.'))
+generate_log = settings.get('log', 'no').lower() in ['yes', 'on', 'true']
 if settings.get('display'):
     os.environ['DISPLAY'] = settings['display']
-
+if generate_log:
+    try:
+        log_dir = to_path(user_data_dir('kodi-control'))
+        log_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        error(os_error(e))
+    inform.set_logfile(logfile=log_dir / 'log')
+    inform.flush = True
+    log(f"kodi rpc url: {url}")
 
 # main loop {{{2
 display("Enter desired actions, use 'q' to terminate.")
 display(columns(desc, 90))
 
-scale_factor = Scale()
+repeat = Repeat()
 try:
     while True:
         action = getch()
-        scale_factor.update(action)
+        repeat.update(action)
         if action in ['INTR', 'EOF', 'q']:
             break
-        try:
+        if action in available:
             run(available[action])
-        except KeyError:
+        else:
             error('unknown action.', culprit=action)
     done()
 except OSError as e:

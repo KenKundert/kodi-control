@@ -99,6 +99,19 @@ does not work.  With *Kodi* running, you can run the *ps* command and look for
 usually *kodi* and the other is generally *kodi.bin*, *kodi.bin_v8*, or 
 *kodi.x11*.  You want to use the second.
 
-If you have any trouble, you can look in the log file, 
-``~/.local/share/kodi-control/log`` for clues.  Feel free to post them to 
-`GitHub Issues <https://github.com/KenKundert/kodi-control/issues>`_.
+Older versions of *Kodi* have a bug that interferes with proper operation of 
+forward seeks of less than 60 seconds.  *Kodi Control* works around this issue 
+if you specify the version number of *Kodi* in the settings file::
+
+    kodi version: 18.7
+
+Currently, the workaround is disabled if the version is 19 or later.
+
+If you have any trouble, you can enable the log file and examine it for clues.  
+To enable the log file add the following to your settings file::
+
+    log: yes
+
+Then the log file can be found at ``~/.local/share/kodi-control/log``.  Feel 
+free to post questions or bug report to `GitHub Issues 
+<https://github.com/KenKundert/kodi-control/issues>`_.
