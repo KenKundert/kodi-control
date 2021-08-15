@@ -50,15 +50,15 @@ interface.  To do so, open *Kodi* and navigate to *Settings* → *Services*
 → *Control* and enable "Allow remote control via HTTP".  While there you can add 
 a username and password if desired.  Do not enable SSL.
 
-You can run *Kodi Control* on a different from the one that runs *Kodi*, you 
-just need to give the hostname for the machine that is running *Kodi*, and of 
-course that machine must be accessible over the network from the machine running 
-*Kodi Control*.  In this case, some functionality, such as volume control and 
-starting and killing *Kodi*, is not available.  Alternately, *Kodi* can be run 
-locally or you can open an SSH terminal and run *Kodi Control* on the *Kodi* 
-host.  In this case all functionality is available.  To control a remote *Kodi* 
-while using an SSH terminal, you must specify the name of your display in your 
-``settings.nt`` file.  The typical value is ``:0`` or ``:0``, but you can 
+You can run *Kodi Control* on a host different from the one that runs *Kodi*, 
+you just need to give the hostname for the machine that is running *Kodi*, and 
+of course that machine must be accessible over the network from the machine 
+running *Kodi Control*.  In this case, some functionality, such as volume 
+control and starting and killing *Kodi*, is not available.  Alternately, *Kodi* 
+can be run locally or you can open an SSH terminal and run *Kodi Control* on the 
+*Kodi* host.  In this case all functionality is available.  To control a remote 
+*Kodi* while using an SSH terminal, you must specify the name of your display in 
+your ``settings.nt`` file.  The typical value is ``:0`` or ``:0``, but you can 
 examine your DISPLAY environment variable and specify whatever it contains::
 
     display: :0
@@ -121,6 +121,7 @@ To enable the log file, add the following to your settings file::
 
     log: yes
 
-Then the log file can be found at ``~/.local/share/kodi-control/log``.  Feel 
-free to post questions or bug report to `GitHub Issues 
+The log file can then be found at ``~/.local/share/kodi-control/log``.
+
+Feel free to post questions or bug report to `GitHub Issues 
 <https://github.com/KenKundert/kodi-control/issues>`_.

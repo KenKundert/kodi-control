@@ -2,6 +2,7 @@
 .*.swp
 install.out
 .bump.cfg
+TODO
 
 # Packages
 *.egg
