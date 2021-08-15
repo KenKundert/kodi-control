@@ -87,7 +87,7 @@ simply type individual characters to run the desired action.
 The temporary mute action (``M``) engages mute for settable number of seconds.  
 This can be used to turn off the sound during commercials.  Once engaged you 
 will see a count down with the sound being re-enabled when the count reaches 0.  
-During the interim all input is ignore except ``ctrl-C` which immediately 
+During the interim all input is ignore except ``ctrl-C`` which immediately 
 terminates the count-down and immediately re-activates the sound.  You can 
 specify the duration of the temporary mute with the following setting::
 
