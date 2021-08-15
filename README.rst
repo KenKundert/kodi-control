@@ -55,11 +55,12 @@ you just need to give the hostname for the machine that is running *Kodi*, and
 of course that machine must be accessible over the network from the machine 
 running *Kodi Control*.  In this case, some functionality, such as volume 
 control and starting and killing *Kodi*, is not available.  Alternately, *Kodi* 
-can be run locally or you can open an SSH terminal and run *Kodi Control* on the 
-*Kodi* host.  In this case all functionality is available.  To control a remote 
-*Kodi* while using an SSH terminal, you must specify the name of your display in 
-your ``settings.nt`` file.  The typical value is ``:0`` or ``:0``, but you can 
-examine your DISPLAY environment variable and specify whatever it contains::
+can be run locally (best with two screens) or you can open an SSH terminal and 
+run *Kodi Control* on the *Kodi* host.  In this case all functionality is 
+available.  To control a remote *Kodi* while using an SSH terminal, you must 
+specify the name of your display in your ``settings.nt`` file.  The typical 
+value is ``:0`` or ``:0``, but you can examine your DISPLAY environment variable 
+and specify whatever it contains::
 
     display: :0
 
