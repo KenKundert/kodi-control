@@ -63,8 +63,7 @@ class KodiAction(Action):
         except (
             ConnectionError, TimeoutError, requests.RequestException
         ) as e:
-            log(e)
-            raise Error('no connection to Kodi.')
+            raise Error('no connection to Kodi.', codicil=e)
         except json.JSONDecodeError as e:
             raise Error(e)
             #response = {}

@@ -3,6 +3,7 @@
 install.out
 .bump.cfg
 TODO
+tryit
 
 # Packages
 *.egg
