@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#
 #  Kodi Control
 
 # Description {{{1
@@ -9,8 +8,7 @@ Usage:
     kodi-control
 
 Use simple keystokes to control Kodi.
-Enable 'remote control from applications'
-Specify hostname and port number in ~/.config/kodi-control/settings.nt
+Visit github.com/KenKundert/kodi-control for view instructions.
 """
 
 # Imports {{{1
@@ -94,15 +92,15 @@ class KodiAction(Action):
         return player_ids[0]
 
 
-# KodiInput {{{2
-class KodiInput(KodiAction):
+# KodiBaseAction {{{2
+class KodiBaseAction(KodiAction):
 
     def run(self):
         self.send_to_kodi()
 
 
-# KodiPlayer {{{2
-class KodiPlayer(KodiAction):
+# KodiPlayerAction {{{2
+class KodiPlayerAction(KodiAction):
 
     def run(self):
         player_id = self.get_active_player()
@@ -110,8 +108,8 @@ class KodiPlayer(KodiAction):
             self.send_to_kodi(playerid=player_id)
 
 
-# KodiSeek {{{2
-class KodiSeek(KodiAction):
+# KodiSeekAction {{{2
+class KodiSeekAction(KodiAction):
     # Kodi 17 & 18 are broken for forward seeks of less than 60 seconds.
     # Rather than a relative seek, these do an absolute seek.
     # So seek 60 moves forward one minute, but seek 30 moves to 30s into show.
@@ -139,13 +137,13 @@ class KodiSeek(KodiAction):
     def __init__(self, keys, desc, direction=None):
         super().__init__(keys, desc)
         self.method = 'Player.Seek'
-        self.direction = direction  # needed by KodiSeek
+        self.direction = direction  # needed by KodiSeekAction
         self.kwargs = {}
 
 
     @classmethod
     def initialize(cls):
-        if kodi_version < (19,0):
+        if kodi_version < (19,):
             small_seeks = [
                 dict(step='smallforward'),   # +30 seconds
                 dict(step='smallforward'),   # +30 seconds
@@ -179,8 +177,8 @@ class KodiSeek(KodiAction):
             self.send_to_kodi(playerid=player_id, value=repeat.get_seek(seeks))
 
 
-# Literals {{{2
-class Literals(KodiAction):
+# EnterTextAction {{{2
+class EnterTextAction(KodiAction):
 
     def run(self):
         try:
@@ -190,14 +188,14 @@ class Literals(KodiAction):
             display()
 
 
-# ToggleMute {{{2
-class ToggleMute(Action):
+# ToggleMuteAction {{{2
+class ToggleMuteAction(Action):
 
     def run(self):
         mute()
 
-# TemporaryMute {{{2
-class TemporaryMute(Action):
+# TemporaryMuteAction {{{2
+class TemporaryMuteAction(Action):
 
     def __init__(self, keys=None, desc=None):
         super().__init__(keys, desc)
@@ -218,8 +216,8 @@ class TemporaryMute(Action):
         show()
         mute('0')
 
-# Volume {{{2
-class Volume(Action):
+# VolumeAction {{{2
+class VolumeAction(Action):
     def __init__(self, keys, desc, direction, percent=5):
         super().__init__(keys, desc)
         assert direction in ['+', '-']
@@ -231,16 +229,16 @@ class Volume(Action):
             Run(f'pactl set-sink-mute {sink} 0', modes='soeW')
             Run(f'pactl set-sink-volume {sink} {self.direction}{self.percent}%', modes='soeW')
 
-# StartPlayer {{{2
-class StartPlayer(Action):
+# StartPlayerAction {{{2
+class StartPlayerAction(Action):
     def __init__(self, keys, desc):
         super().__init__(keys, desc)
 
     def run(self):
         Start(kodi_exe, modes='sOEW')
 
-# KillPlayer {{{2
-class KillPlayer(Action):
+# KillPlayerAction {{{2
+class KillPlayerAction(Action):
     def __init__(self, keys, desc):
         super().__init__(keys, desc)
 
@@ -301,6 +299,7 @@ def to_int(arg):
         raise Invalid('expected integer.')
 
 
+# Keys class {{{2
 class Keys:
     known_keys = set()
     def __init__(self, keys):
@@ -316,7 +315,7 @@ __released__ = '2021-08-14'
 
 
 # scale factor {{{2
-class Repeat:
+class RepeatedKey:
     def __init__(self):
         self.reset()
 
@@ -370,63 +369,77 @@ schema = Schema(
         display = str,
         temporary_mute_duration = to_int,
         kodi = str,
-        kodi_binary = str,
+        kodi_binary = str,  # no longer used
         kodi_version = str,
         log = str,
     )
 )
 
-# actions {{{2
-actions = [
-    KodiInput('h', 'move left', 'Input.Left'),
-    KodiInput('j', 'move down', 'Input.Down'),
-    KodiInput('k', 'move up', 'Input.Up'),
-    KodiInput('l', 'move right', 'Input.Right'),
-    KodiInput('ENT', 'select', 'Input.Select'),
-    KodiInput('BS', 'go back', 'Input.Back'),
-    KodiInput('ESC H', 'go to to home screen', 'Input.Home'),
-    KodiInput('n', 'toggle navigation', 'Input.ShowOSD'),
-
-    KodiPlayer([' ', 'p'], 'toggle play/pause', 'Player.PlayPause'),
-    KodiSeek('b', 'skip backward', direction='backward'),
-    KodiSeek('f', 'skip forward', direction='forward'),
-
-    KodiPlayer('s', 'go to start', 'Player.Seek', value=dict(percentage=0)),
-    KodiPlayer('0', 'go to 0%', 'Player.Seek', value=dict(percentage=0)),
-    KodiPlayer('1', 'go to 10%', 'Player.Seek', value=dict(percentage=10)),
-    KodiPlayer('2', 'go to 20%', 'Player.Seek', value=dict(percentage=20)),
-    KodiPlayer('3', 'go to 30%', 'Player.Seek', value=dict(percentage=30)),
-    KodiPlayer('4', 'go to 40%', 'Player.Seek', value=dict(percentage=40)),
-    KodiPlayer('5', 'go to 50%', 'Player.Seek', value=dict(percentage=50)),
-    KodiPlayer('6', 'go to 60%', 'Player.Seek', value=dict(percentage=60)),
-    KodiPlayer('7', 'go to 70%', 'Player.Seek', value=dict(percentage=70)),
-    KodiPlayer('8', 'go to 80%', 'Player.Seek', value=dict(percentage=80)),
-    KodiPlayer('9', 'go to 90%', 'Player.Seek', value=dict(percentage=90)),
-    KodiPlayer('e', 'go to end', 'Player.Seek', value=dict(percentage=100)),
-    KodiPlayer('x', 'stop', 'Player.Stop'),
-
-    ToggleMute('m', 'toggle mute'),
-    TemporaryMute('M', 'temporary mute'),
-    Volume('u', 'volume up', '+'),
-    Volume('d', 'volume down', '-'),
-    Literals("'", 'literal text'),
-
-    KodiInput('P', 'toggle player on top', 'GUI.SetFullscreen', fullscreen='toggle'),
-    KodiInput('c', 'context menu', 'Input.ContextMenu'),
-    KodiInput('i', 'show info', 'Input.Info'),
-    KodiPlayer('t', 'hide subtitles', 'Player.SetSubtitle', subtitle='off'),
-    KodiPlayer('T', 'show subtitles', 'Player.SetSubtitle', subtitle='on'),
-
-    StartPlayer('S', 'start player'),
-    KillPlayer('K', 'kill player'),
-]
+# categorized_actions {{{2
+categorized_actions = {
+    "Navigation Keys": [
+        KodiBaseAction('h', 'move left', 'Input.Left'),
+        KodiBaseAction('j', 'move down', 'Input.Down'),
+        KodiBaseAction('k', 'move up', 'Input.Up'),
+        KodiBaseAction('l', 'move right', 'Input.Right'),
+        KodiBaseAction('ENT', 'select', 'Input.Select'),
+        KodiBaseAction('BS', 'go back', 'Input.Back'),
+        KodiBaseAction('ESC H', 'go to to home screen', 'Input.Home'),
+        KodiBaseAction('c', 'context menu', 'Input.ContextMenu'),
+    ],
+    "Player Keys": [
+        KodiPlayerAction([' ', 'p'], 'toggle play/pause', 'Player.PlayPause'),
+        KodiSeekAction('b', 'skip backward', direction='backward'),
+        KodiSeekAction('f', 'skip forward', direction='forward'),
+        KodiPlayerAction('s', 'go to start', 'Player.Seek', value=dict(percentage=0)),
+        KodiPlayerAction('0', 'go to 0%', 'Player.Seek', value=dict(percentage=0)),
+        KodiPlayerAction('1', 'go to 10%', 'Player.Seek', value=dict(percentage=10)),
+        KodiPlayerAction('2', 'go to 20%', 'Player.Seek', value=dict(percentage=20)),
+        KodiPlayerAction('3', 'go to 30%', 'Player.Seek', value=dict(percentage=30)),
+        KodiPlayerAction('4', 'go to 40%', 'Player.Seek', value=dict(percentage=40)),
+        KodiPlayerAction('5', 'go to 50%', 'Player.Seek', value=dict(percentage=50)),
+        KodiPlayerAction('6', 'go to 60%', 'Player.Seek', value=dict(percentage=60)),
+        KodiPlayerAction('7', 'go to 70%', 'Player.Seek', value=dict(percentage=70)),
+        KodiPlayerAction('8', 'go to 80%', 'Player.Seek', value=dict(percentage=80)),
+        KodiPlayerAction('9', 'go to 90%', 'Player.Seek', value=dict(percentage=90)),
+        KodiPlayerAction('e', 'go to end', 'Player.Seek', value=dict(percentage=100)),
+        KodiPlayerAction('x', 'stop player', 'Player.Stop'),
+        KodiBaseAction('n', 'toggle navigation', 'Input.ShowOSD'),
+        KodiBaseAction('P', 'toggle player on top', 'GUI.SetFullscreen', fullscreen='toggle'),
+        KodiBaseAction('i', 'show info', 'Input.Info'),
+        KodiPlayerAction('t', 'hide subtitles', 'Player.SetSubtitle', subtitle='off'),
+        KodiPlayerAction('T', 'show subtitles', 'Player.SetSubtitle', subtitle='on'),
+    ],
+    "Sound Keys": [
+        ToggleMuteAction('m', 'toggle mute'),
+        TemporaryMuteAction('M', 'temporary mute'),
+        VolumeAction('u', 'volume up', '+'),
+        VolumeAction('d', 'volume down', '-'),
+    ],
+    "Kodi Keys": [
+        EnterTextAction("'", 'enter text'),
+        StartPlayerAction('S', 'start kodi'),
+        #KillPlayerAction('K', 'kill player'),
+        KodiBaseAction('K', 'kill kodi', 'Application.Quit'),
+    ],
+}
+available_actions = []
+all_actions = {}
+for category, actions in categorized_actions.items():
+    available = {k:a for a in actions for k in a.keys}
+    all_actions.update(available)
+    available_actions.extend([
+        f'\n{category}:',
+        columns(
+            '{}: {}'.format(k, available[k].desc) for k in sorted(available)
+        )
+    ])
+available_actions = '\n'.join(available_actions)
 
 
 # Main {{{1
 # read command line {{{2
-available = {k:a for a in actions for k in a.keys}
-desc = ['{}: {}'.format(k, available[k].desc) for k in sorted(available)]
-cmdline = docopt(__doc__.format(actions=columns(desc)))
+cmdline = docopt(__doc__.format(actions=available_actions), version=__version__)
 
 # set up logging to ~/.local/share/kodi-control/log {{{2
 shlib_set_prefs(use_inform=True, log_cmd=True)
@@ -479,17 +492,17 @@ if generate_log:
 
 # main loop {{{2
 display("Enter desired actions, use 'q' to terminate.")
-display(columns(desc, 90))
+display(available_actions)
 
-repeat = Repeat()
+repeat = RepeatedKey()
 try:
     while True:
         action = getch()
         repeat.update(action)
         if action in ['INTR', 'EOF', 'q']:
             break
-        if action in available:
-            run(available[action])
+        if action in all_actions:
+            run(all_actions[action])
         else:
             error('unknown action.', culprit=action)
     done()
