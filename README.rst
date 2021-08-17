@@ -68,19 +68,30 @@ However you choose to do it, you would start *Kodi Control* in a terminal::
 
     > kodi-control
     Enter desired actions, use 'q' to terminate.
-         : toggle play/pause       ENT: select                h: move left
-        ': literal text            ESC: go to to home screen  i: show info
-        0: go to 0%                H: go to to home screen    j: move down
-        1: go to 10%               K: kill player             k: move up
-        2: go to 20%               M: temporary mute          l: move right
-        3: go to 30%               P: toggle player on top    m: toggle mute
-        4: go to 40%               S: start player            n: toggle navigation
-        5: go to 50%               T: show subtitles          p: toggle play/pause
-        6: go to 60%               b: skip backward           s: go to start
-        7: go to 70%               c: context menu            t: hide subtitles
-        8: go to 80%               d: volume down             u: volume up
-        9: go to 90%               e: go to end               x: stop
-        BS: go back                f: skip forward
+
+    Navigation Keys:
+        BS: go back                h: move left
+        ENT: select                j: move down
+        ESC: go to to home screen  k: move up
+        H: go to to home screen    l: move right
+        c: context menu
+
+    Player Keys:
+         : toggle play/pause     7: go to 70%             i: show info
+        0: go to 0%              8: go to 80%             n: toggle navigation
+        1: go to 10%             9: go to 90%             p: toggle play/pause
+        2: go to 20%             P: toggle player on top  s: go to start
+        3: go to 30%             T: show subtitles        t: hide subtitles
+        4: go to 40%             b: skip backward         x: stop player
+        5: go to 50%             e: go to end
+        6: go to 60%             f: skip forward
+
+    Sound Keys:
+        M: temporary mute  m: toggle mute
+        d: volume down     u: volume up
+
+    Kodi Keys:
+        ': enter text  K: kill kodi   S: start kodi
 
 As it starts, it immediately prints a list of available actions.  Then you 
 simply type individual characters to run the desired action.
