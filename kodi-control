@@ -123,13 +123,20 @@ class KodiSeekAction(KodiAction):
 
     FORWARD_SEEKS = None  # set in run() to work around Kodi bug
     BACKWARD_SEEKS = [
-        dict(seconds=-10),
+        dict(seconds=-8),
+        dict(seconds=-11),
         dict(seconds=-15),
+        dict(seconds=-21),
         dict(seconds=-30),
+        dict(seconds=-42),
         dict(seconds=-60),
+        dict(seconds=-85),
         dict(seconds=-120),
+        dict(seconds=-170),
         dict(seconds=-240),
+        dict(seconds=-339),
         dict(seconds=-480),
+        dict(seconds=-679),
         dict(seconds=-960),
     ]
 
