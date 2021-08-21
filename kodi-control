@@ -146,18 +146,27 @@ class KodiSeekAction(KodiAction):
             small_seeks = [
                 dict(step='smallforward'),   # +30 seconds
                 dict(step='smallforward'),   # +30 seconds
+                dict(step='smallforward'),   # +30 seconds
+                dict(step='smallforward'),   # +30 seconds
             ]
         else:
             small_seeks = [
-                dict(seconds=+10),
+                dict(seconds=+7.5),
+                dict(seconds=+11),
                 dict(seconds=+15),
+                dict(seconds=+21),
                 dict(seconds=+30),
+                dict(seconds=+42),
             ]
         large_seeks = [
             dict(seconds=+60),
+            dict(seconds=+85),
             dict(seconds=+120),
+            dict(seconds=+170),
             dict(seconds=+240),
+            dict(seconds=+339),
             dict(seconds=+480),
+            dict(seconds=+679),
             dict(seconds=+960),
         ]
         cls.FORWARD_SEEKS = small_seeks + large_seeks
@@ -313,6 +322,7 @@ __version__ = '0.2.0'
 __released__ = '2021-08-14'
 
 
+
 # scale factor {{{2
 class RepeatedKey:
     def __init__(self):
@@ -338,7 +348,7 @@ class RepeatedKey:
             self.timer.cancel()
 
         # schedule a new reset
-        self.timer = threading.Timer(2, self.reset)
+        self.timer = threading.Timer(1, self.reset)
         self.timer.start()
 
         # get and return the appropriate seek
