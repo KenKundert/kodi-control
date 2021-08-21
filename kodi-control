@@ -142,6 +142,7 @@ class KodiSeekAction(KodiAction):
 
     @classmethod
     def initialize(cls):
+        # seconds must be integers
         if kodi_version < (19,):
             small_seeks = [
                 dict(step='smallforward'),   # +30 seconds
@@ -151,7 +152,7 @@ class KodiSeekAction(KodiAction):
             ]
         else:
             small_seeks = [
-                dict(seconds=+7.5),
+                dict(seconds=+8),
                 dict(seconds=+11),
                 dict(seconds=+15),
                 dict(seconds=+21),
