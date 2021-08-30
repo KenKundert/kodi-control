@@ -19,8 +19,8 @@ Kodi Control — Interactive TTY-based remote control for Kodi
     :target: https://pypi.python.org/pypi/kodi-control/
 
 :Author: Ken Kundert
-:Version: 0.2.0
-:Released: 2021-08-14
+:Version: 0.3.0
+:Released: 2021-08-29
 
 *Kodi Control* can be used to control a running instance of *Kodi* from 
 a terminal.  You can use it to interactively control the app and the players by 
