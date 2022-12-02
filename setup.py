@@ -10,7 +10,7 @@ setup(
     long_description=readme,
     long_description_content_type='text/x-rst',
     scripts='kodi-control'.split(),
-    install_requires='appdirs docopt inform nestedtext shlib voluptuous'.split(),
+    install_requires='appdirs docopt inform>=1.28 nestedtext shlib voluptuous'.split(),
     python_requires = '>=3.6',
     keywords = 'kodi'.split(),
     classifiers = [

@@ -448,11 +448,11 @@ for category, actions in categorized_actions.items():
     available_actions.extend([
         f'\n{category}:',
         columns(
-            '{}: {}'.format(k, available[k].desc) for k in sorted(available)
+            ('{}: {}'.format(k, available[k].desc) for k in sorted(available)),
+            min_col_width=26, pagewidth=95,
         )
     ])
 available_actions = '\n'.join(available_actions)
-
 
 # Main {{{1
 # read command line {{{2
