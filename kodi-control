@@ -210,6 +210,7 @@ class ToggleMuteAction(Action):
     def run(self):
         mute()
 
+
 # TemporaryMuteAction {{{2
 class TemporaryMuteAction(Action):
 
@@ -232,6 +233,7 @@ class TemporaryMuteAction(Action):
         show()
         mute('0')
 
+
 # VolumeAction {{{2
 class VolumeAction(Action):
     def __init__(self, keys, desc, direction, percent=5):
@@ -241,9 +243,8 @@ class VolumeAction(Action):
         self.percent = percent
 
     def run(self):
-        for sink in get_audio_sinks():
-            Run(f'pactl set-sink-mute {sink} 0', modes='soeW')
-            Run(f'pactl set-sink-volume {sink} {self.direction}{self.percent}%', modes='soeW')
+        Run(f'wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%{self.direction}', modes='soeW')
+
 
 # StartPlayerAction {{{2
 class StartPlayerAction(Action):
@@ -252,6 +253,7 @@ class StartPlayerAction(Action):
 
     def run(self):
         Start(kodi_exe, modes='sOEW')
+
 
 # KillPlayerAction {{{2
 class KillPlayerAction(Action):
@@ -263,23 +265,14 @@ class KillPlayerAction(Action):
 
 
 # Utility Functions {{{1
-# get_audio_sinks() {{{2
-def get_audio_sinks():
-    pactl = Run('pactl list sinks', modes='sOeW1')
-    return [
-        l.partition('#')[-1]
-        for l in pactl.stdout.splitlines()
-        if l.startswith('Sink #')
-    ]
-
 # mute() {{{2
 def mute(action=None):
     if not action:
         action = 'toggle'
     assert action in ['0', '1', 'toggle']
-    log(f'muting each available sink:')
-    for sink in get_audio_sinks():
-        Run(f'pactl set-sink-mute {sink} {action}', modes='sOMW')
+    log(f'muting: {action}')
+    Run(f'wpctl set-mute @DEFAULT_AUDIO_SOURCE@ {action}', modes='sOMW')
+
 
 # getch() {{{2
 def getch():
@@ -328,7 +321,6 @@ class Keys:
 # Globals {{{1
 __version__ = '0.3.0'
 __released__ = '2021-08-29'
-
 
 
 # scale factor {{{2
