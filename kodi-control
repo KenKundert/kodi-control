@@ -224,12 +224,12 @@ class TemporaryMuteAction(Action):
 
         mute('1')
         try:
-            display('ctrl-c to cancel.')
             for i in range(temporary_mute_duration, 0, -1):
-                show(i)
+                show(f"ctrl-C to cancel — {i}")
                 sleep(1)
         except KeyboardInterrupt:
             pass
+        show('                      ')
         show()
         mute('0')
 

@@ -1,0 +1,14 @@
+major: 0
+minor: 3
+patch: 0
+revision: 0
+type: release
+files:
+    setup.py:
+        version: version
+    kodi-control:
+        version: __version__
+        date: __released__
+    README.rst:
+        version: Version
+        date: Released
