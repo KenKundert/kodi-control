@@ -52,6 +52,7 @@ class KodiAction(Action):
 
         log('sending to kodi:', method)
         params = dict(jsonrpc="2.0", id=1, method=method, params=extra_args)
+        print(params)
         log(indent(nt.dumps(params)))
         request = json.dumps(params).encode('utf-8')
         try:
@@ -420,10 +421,13 @@ categorized_actions = {
         KodiPlayerAction('T', 'show subtitles', 'Player.SetSubtitle', subtitle='on'),
     ],
     "Sound Keys": [
-        ToggleMuteAction('m', 'toggle mute'),
+        # ToggleMuteAction('m', 'toggle mute'),
+        KodiBaseAction('m', 'toggle mute', 'Application.SetMute', mute="toggle"),
         TemporaryMuteAction('M', 'temporary mute'),
-        VolumeAction('u', 'volume up', '+'),
-        VolumeAction('d', 'volume down', '-'),
+        # VolumeAction('u', 'volume up', '+'),
+        # VolumeAction('d', 'volume down', '-'),
+        KodiBaseAction('u', 'volume up', 'Application.SetVolume', volume="increment"),
+        KodiBaseAction('d', 'volume down', 'Application.SetVolume', volume="decrement"),
     ],
     "Kodi Keys": [
         EnterTextAction("'", 'enter text'),
